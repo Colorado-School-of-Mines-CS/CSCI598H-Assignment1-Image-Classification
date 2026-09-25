@@ -1,5 +1,7 @@
 """Train one of four classifiers on CIFAR-10 and optionally write CSV."""
 
+from matplotlib import axes
+# from linear_vs_cnn_tutorial import test_set
 import argparse
 import csv
 import time
@@ -7,7 +9,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, random_split
 from torchvision import datasets, transforms
 
 from models import build_model
@@ -28,19 +30,36 @@ def train_one_step(
     """Run one training step and return the loss as a Python float."""
     # TODO: Set gradients to zero, compute logits and loss, backpropagate,
     # update the parameters, and return the loss as a Python float.
-    raise NotImplementedError
+    prediction = model(images)
+    loss = softmax_cross_entropy(prediction, labels)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    # return float(loss)
+    return loss.item()
 
 
 def evaluate(model, data_loader, device):
     # TODO: Evaluate all batches without gradients. Weight each batch accuracy
     # by its number of examples and return the overall accuracy.
-    raise NotImplementedError
-
+    with torch.no_grad():
+        correct_pred = 0
+        total_pred = 0
+        for images, labels in data_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            logits = model(images)
+            correct_pred += (logits.argmax(dim=1) == labels).sum().item()
+            total_pred += labels.size(0)
+        return float(correct_pred) / float(total_pred) if total_pred > 0 else 0.0
 
 def compute_accuracy(logits: torch.Tensor, labels: torch.Tensor) -> float:
     """Return the fraction of correct predictions as a Python float."""
     # TODO: Choose the class with the largest logit and compute accuracy.
-    raise NotImplementedError
+    predictions = logits.argmax(dim=1)
+    accuracy = torch.where(predictions == labels, 1, 0)
+    return accuracy.float().mean().item()
+    
 
 
 def softmax_cross_entropy(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
@@ -48,7 +67,16 @@ def softmax_cross_entropy(logits: torch.Tensor, labels: torch.Tensor) -> torch.T
     # TODO 1: Compute log probabilities using a numerically stable method.
     # TODO 2: Select the log probability of each correct class.
     # TODO 3: Return the mean negative log probability.
-    raise NotImplementedError
+
+
+    #faile numerical stability
+    # prob = torch.softmax(logits, dim=1)
+    # log_prob = torch.log(prob)
+
+    log_normalizer = torch.logsumexp(logits, dim=1)
+    correct_class_logits = logits.gather(1, labels.unsqueeze(1)).squeeze(1)
+    return (log_normalizer - correct_class_logits).mean()
+    
 
 
 def build_optimizer(name, parameters, learning_rate, momentum=0.0):
@@ -86,7 +114,44 @@ def make_data_loaders():
     # TODO 1: load data train / valid sets
     # TODO 2: data augmentation /normalization
     # TODO 3: return dataloaders
-    raise NotImplementedError
+
+    trainig_transform = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (0.5, 0.5, 0.5),
+            (0.5, 0.5, 0.5))
+    ])
+    validation_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (0.5, 0.5, 0.5),
+            (0.5, 0.5, 0.5)
+        )
+    ])
+    train_set = datasets.CIFAR10("./data", 
+                            train=True, 
+                            download=True, 
+                            transform=trainig_transform)
+    val_set = datasets.CIFAR10("./data", 
+                            train=False, 
+                            download=True, 
+                            transform=validation_transform)
+    data_Set_sz = len(train_set)
+
+
+    # train_set, val_set = random_split(
+    #     range(data_Set_sz), 
+    #     [0.8, 0.2],
+    #     generator=torch.Generator().manual_seed(598) 
+    # )
+    # train_set = Subset(train_set, train_set.indices)
+    # val_set = Subset(val_set, val_set.indices)
+    train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
+    val_loader = DataLoader(val_set, batch_size=128, shuffle=False)
+    return train_loader, val_loader
+    
 
 def main():
     parser = argparse.ArgumentParser()

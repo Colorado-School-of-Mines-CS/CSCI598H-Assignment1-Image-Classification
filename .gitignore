@@ -21,3 +21,11 @@ checkpoints/
 # Temporary experiment output (the final results.csv must be committed)
 results/*.csv
 *.tmp
+
+
+
+#mine
+terminal_cmds.txt
+old_results.cxv
+analysis_notes.md
+bah.txt
