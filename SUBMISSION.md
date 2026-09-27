@@ -5,13 +5,13 @@ the private repository created for you in the course GitHub organization.
 
 Before submitting, verify all of the following:
 
-- [ ] Every `TODO` in `models.py` and `train.py` is complete.
-- [ ] The GitHub Actions **Student checks** workflow passes on the submitted commit.
-- [ ] `experiments.json` still contains all required experiment IDs.
-- [ ] The full experiments were run without the `--max-*-samples` flags.
-- [ ] The generated `results.csv` is committed and pushed.
+- [x] Every `TODO` in `models.py` and `train.py` is complete.
+- [x] The GitHub Actions **Student checks** workflow passes on the submitted commit.
+- [x] `experiments.json` still contains all required experiment IDs.
+- [x] The full experiments were run without the `--max-*-samples` flags.
+- [x] The generated `results.csv` is committed and pushed.
 - [ ] All seven questions in `analysis.md` are answered.
-- [ ] The `data/` directory and model checkpoints were not committed.
+- [x] The `data/` directory and model checkpoints were not committed.
 - [ ] Gradescope is linked to the correct private repository and commit/branch.
 
 Useful commands:

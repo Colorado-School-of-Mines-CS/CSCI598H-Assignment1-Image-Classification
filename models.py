@@ -221,12 +221,11 @@ class VisionTransformerClassifier(nn.Module):
 
     def positional_encoding_1d(self, seq_length, d_model):
         '''
+            sin(pos / 10000^(2i pos/d_model))
+            cos (pos / 10000^(2i pos/d_model)) 
 
-        sin(pos / 10000^(2i pos/d_model))
-        cos (pos / 10000^(2i pos/d_model)) 
-
-        in logarithm we have
-        log(10000^(2i pos/d_model)) = 2 pos/d_model * log(10000) = exp(2* 4 * pos/d_model * log(10))
+            in logarithm we have
+            log(10000^(2i pos/d_model)) = 2 pos/d_model * log(10000) = exp(2* 4 * pos/d_model * log(10))
         '''
         pos = torch.arange(seq_length).unsqueeze(1) # 8 tokens
         idx = torch.arange(d_model // 2).unsqueeze(0)
@@ -313,7 +312,7 @@ class TransformerEncoderLayer(nn.Module):
             dropout=dropout)
         self.mlp = nn.Sequential(
             nn.Linear(embed_dim, mlp_dim),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(mlp_dim, embed_dim)
         )
     def forward(self, x):
