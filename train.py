@@ -28,19 +28,39 @@ def train_one_step(
     """Run one training step and return the loss as a Python float."""
     # TODO: Set gradients to zero, compute logits and loss, backpropagate,
     # update the parameters, and return the loss as a Python float.
-    raise NotImplementedError
+    prediction = model(images)
+    loss = softmax_cross_entropy(prediction, labels)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    # return float(loss)
+    return loss.item()
+
+
 
 
 def evaluate(model, data_loader, device):
     # TODO: Evaluate all batches without gradients. Weight each batch accuracy
     # by its number of examples and return the overall accuracy.
-    raise NotImplementedError
+    model.eval() 
+    with torch.no_grad():
+        correct_pred = 0
+        total_pred = 0
+        for images, labels in data_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            logits = model(images)
+            correct_pred += (logits.argmax(dim=1) == labels).sum().item()
+            total_pred += labels.size(0)
+        return float(correct_pred) / float(total_pred) if total_pred > 0 else 0.0
 
 
 def compute_accuracy(logits: torch.Tensor, labels: torch.Tensor) -> float:
     """Return the fraction of correct predictions as a Python float."""
     # TODO: Choose the class with the largest logit and compute accuracy.
-    raise NotImplementedError
+    predictions = logits.argmax(dim=1)
+    accuracy = torch.where(predictions == labels, 1, 0)
+    return accuracy.float().mean().item()
 
 
 def softmax_cross_entropy(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
@@ -48,7 +68,13 @@ def softmax_cross_entropy(logits: torch.Tensor, labels: torch.Tensor) -> torch.T
     # TODO 1: Compute log probabilities using a numerically stable method.
     # TODO 2: Select the log probability of each correct class.
     # TODO 3: Return the mean negative log probability.
-    raise NotImplementedError
+    #failed numerical stability
+    # prob = torch.softmax(logits, dim=1)
+    # log_prob = torch.log(prob)
+
+    log_normalizer = torch.logsumexp(logits, dim=1)
+    correct_class_logits = logits.gather(1, labels.unsqueeze(1)).squeeze(1)
+    return (log_normalizer - correct_class_logits).mean()
 
 
 def build_optimizer(name, parameters, learning_rate, momentum=0.0):
@@ -82,11 +108,84 @@ def build_lr_scheduler(name, optimizer, epochs, step_size=5, gamma=0.1):
     raise ValueError(f"Unknown LR schedule {name!r}; choose none, step, or cosine.")
 
 
-def make_data_loaders():
+def make_data_loaders(
+        dir_data = "./data",
+        batch_SZ=128,
+        max_train_samples=None,
+        max_val_samples=None,
+):
     # TODO 1: load data train / valid sets
     # TODO 2: data augmentation /normalization
     # TODO 3: return dataloaders
-    raise NotImplementedError
+    trainig_transform = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (0.5, 0.5, 0.5),
+            (0.5, 0.5, 0.5))
+    ])
+    # adding more tricks for VIT perofmance it didnt work
+    # trainig_transform = transforms.Compose([
+    #     transforms.RandomCrop(32, padding=4),
+    #     transforms.RandomRotation(15),
+    #     transforms.ColorJitter(brightness=0.2, 
+    #                     contrast=0.2,
+    #                     saturation=0.2, 
+    #                     hue=0.1),
+    #     transforms.RandomHorizontalFlip(),
+    #     transforms.ToTensor(),
+    #     transforms.RandomErasing(p=0.5,
+    #                             scale=(0.02, 0.33),
+    #                              ratio=(0.3, 3.3),
+    #                              value=0),
+    #     transforms.Normalize(
+    #         (0.5, 0.5, 0.5),
+    #         (0.5, 0.5, 0.5))
+    # ])
+    validation_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (0.5, 0.5, 0.5),
+            (0.5, 0.5, 0.5)
+        )
+    ])
+    train_set = datasets.CIFAR10(dir_data, 
+                            train=True, 
+                            download=True, 
+                            transform=trainig_transform)
+    val_set = datasets.CIFAR10(dir_data, 
+                            train=False, 
+                            download=True, 
+                            transform=validation_transform)
+    data_Set_sz = len(train_set)
+    if max_train_samples is not None:
+        train_set = Subset(
+            train_set,
+            range(min(data_Set_sz, max_train_samples))
+        )
+    if max_val_samples is not None:
+        val_set = Subset(
+            val_set, 
+            range(min(len(val_set), max_val_samples))
+        )
+
+    # train_set, val_set = random_split(
+    #     range(data_Set_sz), 
+    #     [0.8, 0.2],
+    #     generator=torch.Generator().manual_seed(598) 
+    # )
+    # train_set = Subset(train_set, train_set.indices)
+    # val_set = Subset(val_set, val_set.indices)
+    train_loader = DataLoader(
+        train_set,
+        batch_size=batch_SZ,
+        shuffle=True)
+    val_loader = DataLoader(
+        val_set, 
+        batch_size=batch_SZ,
+        shuffle=False)
+    return train_loader, val_loader
 
 def main():
     parser = argparse.ArgumentParser()
@@ -128,7 +227,12 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # TODO: get dataloaders
-    train_loader, validation_loader = make_data_loaders()
+    train_loader, validation_loader = make_data_loaders(
+        dir_data    =args.data_dir,
+        batch_SZ=args.batch_size,
+        max_train_samples=args.max_train_samples,
+        max_val_samples=args.max_validation_samples,
+    )
 
     if args.model in {"conv", "vit"} and args.num_layers is None:
         raise ValueError("--num-layers is required for conv and vit models")
