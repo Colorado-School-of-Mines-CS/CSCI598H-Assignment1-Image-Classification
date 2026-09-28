@@ -42,6 +42,7 @@ def train_one_step(
 def evaluate(model, data_loader, device):
     # TODO: Evaluate all batches without gradients. Weight each batch accuracy
     # by its number of examples and return the overall accuracy.
+    model.eval() 
     with torch.no_grad():
         correct_pred = 0
         total_pred = 0
@@ -110,7 +111,12 @@ def build_lr_scheduler(name, optimizer, epochs, step_size=5, gamma=0.1):
     raise ValueError(f"Unknown LR schedule {name!r}; choose none, step, or cosine.")
 
 
-def make_data_loaders():
+def make_data_loaders(
+        dir_data = "./data",
+        batch_SZ=128,
+        max_train_samples=None,
+        max_val_samples=None
+):
     # TODO 1: load data train / valid sets
     # TODO 2: data augmentation /normalization
     # TODO 3: return dataloaders
@@ -148,16 +154,25 @@ def make_data_loaders():
             (0.5, 0.5, 0.5)
         )
     ])
-    train_set = datasets.CIFAR10("./data", 
+    train_set = datasets.CIFAR10(dir_data, 
                             train=True, 
                             download=True, 
                             transform=trainig_transform)
-    val_set = datasets.CIFAR10("./data", 
+    val_set = datasets.CIFAR10(dir_data, 
                             train=False, 
                             download=True, 
                             transform=validation_transform)
     data_Set_sz = len(train_set)
-
+    if max_train_samples is not None:
+        train_set = Subset(
+            train_set,
+            range(min(data_Set_sz, max_train_samples))
+        )
+    if max_val_samples is not None:
+        val_set = Subset(
+            val_set, 
+            range(min(len(val_set), max_val_samples))
+        )
 
     # train_set, val_set = random_split(
     #     range(data_Set_sz), 
@@ -166,8 +181,14 @@ def make_data_loaders():
     # )
     # train_set = Subset(train_set, train_set.indices)
     # val_set = Subset(val_set, val_set.indices)
-    train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
-    val_loader = DataLoader(val_set, batch_size=128, shuffle=False)
+    train_loader = DataLoader(
+        train_set,
+        batch_size=batch_SZ,
+        shuffle=True)
+    val_loader = DataLoader(
+        val_set, 
+        batch_size=batch_SZ,
+        shuffle=False)
     return train_loader, val_loader
     
 
@@ -211,7 +232,12 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # TODO: get dataloaders
-    train_loader, validation_loader = make_data_loaders()
+    train_loader, validation_loader = make_data_loaders(
+        dir_data    =args.data_dir,
+        batch_SZ=args.batch_size,
+        max_train_samples=args.max_train_samples,
+        max_val_samples=args.max_validation_samples,
+    )
 
     if args.model in {"conv", "vit"} and args.num_layers is None:
         raise ValueError("--num-layers is required for conv and vit models")

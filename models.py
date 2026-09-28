@@ -80,7 +80,9 @@ class ConvClassifier(nn.Module):
                 nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
                 self.activation,
                 nn.MaxPool2d(kernel_size=2),
-                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1)
+                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
+                self.activation,
+                nn.MaxPool2d(kernel_size=2),
             ]
 
 

@@ -1,10 +1,6 @@
 """Small public checks that use synthetic tensors instead of CIFAR-10."""
 
 import unittest
-#Tosin : for me to use VSCode debugger
-# import sys
-# from pathlib import Path
-# sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import torch
 from torch import nn
